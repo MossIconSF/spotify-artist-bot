@@ -1,7 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth.js";
-import artistRoutes from "./routes/artist.js";
+const artistRoutes = require("./routes/artist.js");
 
 dotenv.config();
 
