@@ -6,3 +6,7 @@ export const createSpotifyClient = () =>
     clientSecret: process.env.CLIENT_SECRET,
     redirectUri: process.env.REDIRECT_URI
   });
+
+// Default client instance (used by artist.js)
+const spotifyApi = createSpotifyClient();
+export default spotifyApi;
