@@ -1,5 +1,5 @@
 import express from "express";
-import spotifyApi from "../spotifyClient.js";
+import { getArtistSpotifyClient } from "./auth.js";
 
 const router = express.Router();
 
@@ -9,6 +9,8 @@ const router = express.Router();
  */
 router.get("/summary", async (req, res) => {
   try {
+    const spotifyApi = await getArtistSpotifyClient();
+
     const [topArtists, topTracks, recentlyPlayed] = await Promise.all([
       spotifyApi.getMyTopArtists({ limit: 10 }),
       spotifyApi.getMyTopTracks({ limit: 10 }),
@@ -32,6 +34,7 @@ router.get("/summary", async (req, res) => {
  */
 router.get("/playlists", async (req, res) => {
   try {
+    const spotifyApi = await getArtistSpotifyClient();
     const playlists = await spotifyApi.getUserPlaylists({ limit: 50 });
     res.json(playlists.body.items);
   } catch (err) {
@@ -52,6 +55,8 @@ const MY_ARTIST_ID = "4OTgA6WkMDc6zYL0mRQpWl";
  */
 router.get("/my-dashboard", async (req, res) => {
   try {
+    const spotifyApi = await getArtistSpotifyClient();
+
     const [artist, topTracks, albums, related] = await Promise.all([
       spotifyApi.getArtist(MY_ARTIST_ID),
       spotifyApi.getArtistTopTracks(MY_ARTIST_ID, "US"),
@@ -80,6 +85,8 @@ router.get("/my-dashboard", async (req, res) => {
  */
 router.get("/my-audio-features", async (req, res) => {
   try {
+    const spotifyApi = await getArtistSpotifyClient();
+
     const topTracks = await spotifyApi.getArtistTopTracks(MY_ARTIST_ID, "US");
     const tracks = topTracks.body.tracks || [];
     const trackIds = tracks.map((t) => t.id);
@@ -106,6 +113,8 @@ router.get("/my-audio-features", async (req, res) => {
  */
 router.get("/my-releases", async (req, res) => {
   try {
+    const spotifyApi = await getArtistSpotifyClient();
+
     const albums = await spotifyApi.getArtistAlbums(MY_ARTIST_ID, {
       include_groups: "album,single,appears_on,compilation",
       limit: 50
