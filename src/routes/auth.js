@@ -7,6 +7,7 @@ const scopes = [
   "user-top-read",
   "playlist-read-private",
   "playlist-read-collaborative"
+  "user-follow-read"
 ];
 
 const spotifyApi = createSpotifyClient();
