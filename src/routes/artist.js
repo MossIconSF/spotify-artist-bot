@@ -23,8 +23,11 @@ router.get("/summary", async (req, res) => {
       recentlyPlayed: recentlyPlayed.body.items
     });
   } catch (err) {
-    console.error("Error in /artist/summary:", err.message);
-    res.status(500).json({ error: err.message });
+    console.error("Error in /artist/summary:", err);
+    res.status(500).json({
+      error: err.message || "Unknown error",
+      details: err.body || err
+    });
   }
 });
 
@@ -36,10 +39,14 @@ router.get("/playlists", async (req, res) => {
   try {
     const spotifyApi = await getArtistSpotifyClient();
     const playlists = await spotifyApi.getUserPlaylists({ limit: 50 });
+
     res.json(playlists.body.items);
   } catch (err) {
-    console.error("Error in /artist/playlists:", err.message);
-    res.status(500).json({ error: err.message });
+    console.error("Error in /artist/playlists:", err);
+    res.status(500).json({
+      error: err.message || "Unknown error",
+      details: err.body || err
+    });
   }
 });
 
@@ -74,8 +81,11 @@ router.get("/my-dashboard", async (req, res) => {
       relatedArtists: related.body.artists
     });
   } catch (err) {
-    console.error("Error in /artist/my-dashboard:", err.message);
-    res.status(500).json({ error: err.message });
+    console.error("Error in /artist/my-dashboard:", err);
+    res.status(500).json({
+      error: err.message || "Unknown error",
+      details: err.body || err
+    });
   }
 });
 
@@ -102,8 +112,11 @@ router.get("/my-audio-features", async (req, res) => {
       audioFeatures: features.body.audio_features
     });
   } catch (err) {
-    console.error("Error in /artist/my-audio-features:", err.message);
-    res.status(500).json({ error: err.message });
+    console.error("Error in /artist/my-audio-features:", err);
+    res.status(500).json({
+      error: err.message || "Unknown error",
+      details: err.body || err
+    });
   }
 });
 
@@ -126,8 +139,11 @@ router.get("/my-releases", async (req, res) => {
 
     res.json(items);
   } catch (err) {
-    console.error("Error in /artist/my-releases:", err.message);
-    res.status(500).json({ error: err.message });
+    console.error("Error in /artist/my-releases:", err);
+    res.status(500).json({
+      error: err.message || "Unknown error",
+      details: err.body || err
+    });
   }
 });
 
