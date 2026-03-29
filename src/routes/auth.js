@@ -9,7 +9,8 @@ const scopes = [
   "user-top-read",
   "playlist-read-private",
   "playlist-read-collaborative",
-  "user-follow-read"
+  "user-follow-read",
+  "user-read-recently-played"   // REQUIRED for /artist/summary
 ];
 
 // In-memory token store (replace with DB for production)
@@ -46,6 +47,8 @@ router.get("/callback", async (req, res) => {
       expiresAt: Date.now() + expires_in * 1000
     };
 
+    console.log("Stored tokens:", tokensByUser["demo-artist"]);
+
     res.send("Authenticated with Spotify. Try /artist/summary");
   } catch (err) {
     console.error("Auth error:", err?.body || err);
@@ -59,11 +62,15 @@ router.get("/callback", async (req, res) => {
  */
 export const getArtistSpotifyClient = async () => {
   const tokens = tokensByUser["demo-artist"];
+  console.log("Loaded tokens:", tokens);
+
   if (!tokens) throw new Error("Artist not authenticated yet");
 
   const client = createSpotifyClient();
   client.setAccessToken(tokens.accessToken);
   client.setRefreshToken(tokens.refreshToken);
+
+  console.log("Client access token set:", client.getAccessToken());
 
   // Refresh token if expired or about to expire
   if (Date.now() > tokens.expiresAt - 60_000) {
@@ -74,6 +81,8 @@ export const getArtistSpotifyClient = async () => {
     tokens.expiresAt = Date.now() + expires_in * 1000;
 
     client.setAccessToken(access_token);
+
+    console.log("Refreshed access token:", access_token);
   }
 
   return client;
