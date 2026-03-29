@@ -2,6 +2,8 @@ import express from "express";
 import { createSpotifyClient } from "../spotifyClient.js";
 
 const router = express.Router();
+
+// Scopes your app needs
 const scopes = [
   "user-read-email",
   "user-top-read",
@@ -10,27 +12,34 @@ const scopes = [
   "user-follow-read"
 ];
 
-const spotifyApi = createSpotifyClient();
-
-// demo in-memory store – replace with DB if you go production
+// In-memory token store (replace with DB for production)
 let tokensByUser = {};
 
+/**
+ * GET /auth/login
+ * Redirect user to Spotify login
+ */
 router.get("/login", (req, res) => {
   const state = "artist-bot-state";
+  const spotifyApi = createSpotifyClient();
   const authorizeURL = spotifyApi.createAuthorizeURL(scopes, state);
   res.redirect(authorizeURL);
 });
 
+/**
+ * GET /auth/callback
+ * Spotify redirects here after login
+ */
 router.get("/callback", async (req, res) => {
   const code = req.query.code;
 
   try {
+    const spotifyApi = createSpotifyClient();
     const data = await spotifyApi.authorizationCodeGrant(code);
+
     const { access_token, refresh_token, expires_in } = data.body;
 
-    spotifyApi.setAccessToken(access_token);
-    spotifyApi.setRefreshToken(refresh_token);
-
+    // Store tokens for later use by artist routes
     tokensByUser["demo-artist"] = {
       accessToken: access_token,
       refreshToken: refresh_token,
@@ -39,11 +48,15 @@ router.get("/callback", async (req, res) => {
 
     res.send("Authenticated with Spotify. Try /artist/summary");
   } catch (err) {
-    console.error(err?.body || err);
+    console.error("Auth error:", err?.body || err);
     res.status(400).send("Error authenticating with Spotify");
   }
 });
 
+/**
+ * Returns a fully authenticated Spotify client
+ * Used by all artist routes
+ */
 export const getArtistSpotifyClient = async () => {
   const tokens = tokensByUser["demo-artist"];
   if (!tokens) throw new Error("Artist not authenticated yet");
@@ -52,11 +65,14 @@ export const getArtistSpotifyClient = async () => {
   client.setAccessToken(tokens.accessToken);
   client.setRefreshToken(tokens.refreshToken);
 
+  // Refresh token if expired or about to expire
   if (Date.now() > tokens.expiresAt - 60_000) {
     const data = await client.refreshAccessToken();
     const { access_token, expires_in } = data.body;
+
     tokens.accessToken = access_token;
     tokens.expiresAt = Date.now() + expires_in * 1000;
+
     client.setAccessToken(access_token);
   }
 
