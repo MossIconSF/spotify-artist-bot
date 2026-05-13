@@ -4,7 +4,7 @@ import { createSpotifyClient } from "../spotifyClient.js";
 const router = express.Router();
 
 // -------------------------------
-// TEMPORARY TOKEN STORAGE
+// TEMPORARY IN-MEMORY TOKEN STORE
 // (Works on Render free tier)
 // -------------------------------
 let accessToken = null;
@@ -17,13 +17,11 @@ let tokenExpiresAt = null;
 router.get("/login", (req, res) => {
   const spotifyApi = createSpotifyClient();
 
+  // ✅ ONLY FREE SCOPES — NO PREMIUM REQUIRED
   const scopes = [
     "user-read-email",
     "user-read-private",
-    "user-top-read",
-    "user-read-playback-state",
-    "user-read-currently-playing",
-    "user-read-recently-played"
+    "user-top-read"
   ];
 
   const authorizeURL = spotifyApi.createAuthorizeURL(scopes, "state123");
@@ -43,6 +41,8 @@ router.get("/callback", async (req, res) => {
     accessToken = data.body.access_token;
     refreshToken = data.body.refresh_token;
     tokenExpiresAt = Date.now() + data.body.expires_in * 1000;
+
+    console.log("🎉 Spotify authentication successful");
 
     res.send("Authentication successful. You can now use /artist routes.");
   } catch (err) {
@@ -65,6 +65,8 @@ const refreshAccessToken = async () => {
 
     accessToken = data.body.access_token;
     tokenExpiresAt = Date.now() + data.body.expires_in * 1000;
+
+    console.log("🔄 Access token refreshed");
 
     return accessToken;
   } catch (err) {
