@@ -3,73 +3,94 @@ import { createSpotifyClient } from "../spotifyClient.js";
 
 const router = express.Router();
 
-const scopes = [
-  "user-read-email",
-  "playlist-read-private",
-  "playlist-read-collaborative",
-  "user-follow-read",
-  "user-read-recently-played",
-  "user-top-read"
-];
+// -------------------------------
+// TEMPORARY TOKEN STORAGE
+// (Works on Render free tier)
+// -------------------------------
+let accessToken = null;
+let refreshToken = null;
+let tokenExpiresAt = null;
 
-let tokensByUser = {};
-
+// -------------------------------
+// LOGIN — Redirect user to Spotify
+// -------------------------------
 router.get("/login", (req, res) => {
-  const state = "artist-bot-state";
   const spotifyApi = createSpotifyClient();
-  const authorizeURL = spotifyApi.createAuthorizeURL(scopes, state);
+
+  const scopes = [
+    "user-read-email",
+    "user-read-private",
+    "user-top-read",
+    "user-read-playback-state",
+    "user-read-currently-playing",
+    "user-read-recently-played"
+  ];
+
+  const authorizeURL = spotifyApi.createAuthorizeURL(scopes, "state123");
   res.redirect(authorizeURL);
 });
 
+// -------------------------------
+// CALLBACK — Spotify redirects here
+// -------------------------------
 router.get("/callback", async (req, res) => {
+  const spotifyApi = createSpotifyClient();
   const code = req.query.code;
 
   try {
-    const spotifyApi = createSpotifyClient();
     const data = await spotifyApi.authorizationCodeGrant(code);
 
-    const { access_token, refresh_token, expires_in } = data.body;
+    accessToken = data.body.access_token;
+    refreshToken = data.body.refresh_token;
+    tokenExpiresAt = Date.now() + data.body.expires_in * 1000;
 
-    tokensByUser["demo-artist"] = {
-      accessToken: access_token,
-      refreshToken: refresh_token,
-      expiresAt: Date.now() + expires_in * 1000
-    };
-
-    console.log("Stored tokens:", tokensByUser["demo-artist"]);
-
-    res.send("Authenticated with Spotify. Try /artist/summary");
+    res.send("Authentication successful. You can now use /artist routes.");
   } catch (err) {
-    console.error("Auth error:", err?.body || err);
-    res.status(400).send("Error authenticating with Spotify");
+    console.error("Error in /auth/callback:", err);
+    res.status(500).send("Authentication failed");
   }
 });
 
+// -------------------------------
+// TOKEN REFRESH HELPER
+// -------------------------------
+const refreshAccessToken = async () => {
+  if (!refreshToken) throw new Error("No refresh token available");
+
+  const spotifyApi = createSpotifyClient();
+  spotifyApi.setRefreshToken(refreshToken);
+
+  try {
+    const data = await spotifyApi.refreshAccessToken();
+
+    accessToken = data.body.access_token;
+    tokenExpiresAt = Date.now() + data.body.expires_in * 1000;
+
+    return accessToken;
+  } catch (err) {
+    console.error("Error refreshing access token:", err);
+    throw err;
+  }
+};
+
+// -------------------------------
+// PROVIDE AUTHENTICATED CLIENT
+// -------------------------------
 export const getArtistSpotifyClient = async () => {
-  const tokens = tokensByUser["demo-artist"];
-  console.log("Loaded tokens:", tokens);
-
-  if (!tokens) throw new Error("Artist not authenticated yet");
-
-  const client = createSpotifyClient();
-  client.setAccessToken(tokens.accessToken);
-  client.setRefreshToken(tokens.refreshToken);
-
-  console.log("Client access token set:", client.getAccessToken());
-
-  if (Date.now() > tokens.expiresAt - 60_000) {
-    const data = await client.refreshAccessToken();
-    const { access_token, expires_in } = data.body;
-
-    tokens.accessToken = access_token;
-    tokens.expiresAt = Date.now() + expires_in * 1000;
-
-    client.setAccessToken(access_token);
-
-    console.log("Refreshed access token:", access_token);
+  if (!accessToken) {
+    throw new Error("Artist not authenticated yet");
   }
 
-  return client;
+  // Refresh token if expired
+  if (Date.now() > tokenExpiresAt) {
+    await refreshAccessToken();
+  }
+
+  const spotifyApi = createSpotifyClient();
+  spotifyApi.setAccessToken(accessToken);
+  spotifyApi.setRefreshToken(refreshToken);
+
+  return spotifyApi;
 };
 
 export default router;
